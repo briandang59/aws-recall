@@ -152,6 +152,16 @@ Docker Compose phục vụ chạy cục bộ; Vercel build từ Dockerfile. Khô
 
 ## Các luồng đã có
 
+### Dịch vụ và nhãn cho SAA-C03
+
+Danh mục có **125 dịch vụ/chủ đề trong 17 nhóm**, gồm các dịch vụ trong [phạm vi SAA-C03 của AWS](https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/saa-03-in-scope-services.html), cùng một nhóm thành phần/kiến trúc bổ sung. Cách chia nhóm phục vụ tìm kiếm, không thể hiện trọng số kỳ thi. Đối chiếu danh sách ngày 2026-11-04; phạm vi AWS có thể thay đổi.
+
+Trong form thêm/sửa, bấm dịch vụ rồi tìm bằng tên, tên viết tắt hoặc nhóm tiếng Việt: `ALB` → ELB, `DNS` → Route 53, `SSM` → Systems Manager, `lưu trữ` → nhóm Storage. Có thể dùng phím mũi tên để duyệt và Enter để chọn. Bộ lọc thư viện và phần ôn tập dùng cùng danh sách, chia theo nhóm.
+
+Có **37 nhãn chọn nhanh**: SAA-C03, bốn miền kiến thức, chủ đề kỹ thuật và cách ôn tập. Thẻ mới mặc định có `SAA-C03`; nhãn của thẻ cũ được giữ khi mở sửa. Nhãn gợi ý thay đổi theo dịch vụ, không tự ghi đè nhãn bạn đã chọn. Bạn vẫn có thể nhập nhãn riêng, tối đa 8 nhãn/thẻ. Các nhãn có sẵn dùng ID ổn định như `secure-architectures`, `resilient-architectures`, `high-performance`, `cost-optimization` để lưu Sheets; giao diện nút chọn hiển thị mô tả tiếng Việt.
+
+Khi cập nhật trên GitHub, push toàn bộ thay đổi trong **public/** (bao gồm `shared/catalog.js` và `editor-fields.js`) rồi redeploy; API dùng chung danh mục để kiểm tra dịch vụ, nên cần redeploy cả ứng dụng. Không cần sửa cấu trúc Google Sheet.
+
 - **Tổng quan:** số thẻ, số đến hạn, thẻ đã nhớ, chuỗi ngày học, hoạt động 7 ngày, chủ đề và thẻ gần đây. Dữ liệu thống kê tính từ lượt học thực tế, không tạo lịch sử giả.
 - **Thư viện:** tìm cả câu hỏi, đáp án, dịch vụ, nhãn và ghi chú; lọc theo dịch vụ / đến hạn / yêu thích; dạng lưới hoặc danh sách; thêm, sửa và xóa thẻ.
 - **Kiểm tra trùng:** bỏ khác biệt hoa thường, dấu câu, khoảng trắng; nhận diện SG / Security Group và NACL / Network ACL; cảnh báo tương tự theo từ khóa. Không dùng AI, không bảo đảm nhận diện mọi cách diễn đạt cùng một ý. Kiểm tra câu hỏi trùng chính xác lại phía server khi lưu.
@@ -208,7 +218,7 @@ docker compose config --quiet
 
 Tests gồm validation, phát hiện trùng, lịch ôn, session HMAC, chống request khác origin, OAuth state/PKCE, callback web, cookie mã hóa, cách ly token giữa request đồng thời, lưu token cục bộ, chuyển đổi hàng Sheets và CRUD/review qua Google API giả lập. `npm run build` kiểm tra cú pháp ES modules và sự hiện diện các file triển khai; ứng dụng static không cần bundler.
 
-Kiểm tra trên môi trường xây dựng hiện tại: 18 tests và kiểm tra cú pháp đạt, bao gồm entry point OAuth, proxy host và chẩn đoán callback sai tên miền; trang chủ và `/api/session` trả HTTP 200; Compose hợp lệ. **Chưa chạy được kiểm tra bằng trình duyệt thực và Docker build/run do quyền hệ thống hạn chế. Chưa xác minh Google API thật và chưa đẩy bản sửa lên Vercel: còn cần redeploy các file route và người dùng cấp quyền OAuth.**
+Kiểm tra trên môi trường xây dựng hiện tại: 23 tests và kiểm tra cú pháp đạt, bao gồm danh mục SAA-C03, tìm kiếm alias/tiếng Việt, nhãn có sẵn, tương thích thẻ cũ và vòng lưu/đọc Sheets, entry point OAuth, proxy host và chẩn đoán callback sai tên miền; trang chủ và `/api/session` trả HTTP 200; Compose hợp lệ. **Chưa chạy được kiểm tra bằng trình duyệt thực và Docker build/run do quyền hệ thống hạn chế. Các thay đổi hiện ở mã nguồn cục bộ; cần push GitHub và redeploy để áp dụng lên website.**
 
 Ứng dụng dành cho **một người dùng cá nhân**. Có kiểm tra `updatedAt` trước khi ghi nhưng Google Sheets không cung cấp compare-and-swap cho mô hình này; không bảo đảm chống mọi tranh chấp khi nhiều tab/người ghi đồng thời. Hạn chế sửa trực tiếp/sắp xếp Sheets khi app đang ghi. Login có giới hạn thử mật khẩu trong bộ nhớ mỗi instance; nếu đưa lên Internet, có thể thêm rate limit ở Vercel Firewall.
 

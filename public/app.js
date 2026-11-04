@@ -1,5 +1,7 @@
 import { SERVICES, duplicates, normalize, schedule, isDue, mastery, localDate, createCard, validateCard, validateImport, DAY } from './shared/model.js';
 import { seedCards } from './shared/seed.js';
+import {DEFAULT_TAGS,MAX_TAGS,getService,parseTagInput,toggleTag} from './shared/catalog.js';
+import {serviceOptions,serviceField,serviceResults,tagsField,tagChoices} from './editor-fields.js';
 
 const paths = {
   home: '<path d="m3 10 9-7 9 7v10a1 1 0 0 1-1 1h-5v-7H9v7H4a1 1 0 0 1-1-1Z"/>',
@@ -46,7 +48,8 @@ const paths = {
   trophy: '<path d="M7 3h10v6a5 5 0 0 1-10 0ZM7 5H3v3c0 3 2 5 5 5M17 5h4v3c0 3-2 5-5 5M12 14v6M7 21h10"/>',
 };
 const icon = (name, cls = '') => `<svg class="icon ${cls}" viewBox="0 0 24 24" aria-hidden="true">${paths[name] || paths.layers}</svg>`;
-const serviceIcon = service => ({ IAM: 'shield', EC2: 'server', S3: 'box', VPC: 'network', RDS: 'database', Lambda: 'bolt', DynamoDB: 'database', CloudFront: 'globe', SQS: 'queue', CloudWatch: 'chart' }[service] || 'cloud');
+const serviceIcon = service => ({ IAM: 'shield', EC2: 'server', S3: 'box', VPC: 'network', RDS: 'database', Lambda: 'bolt', DynamoDB: 'database', CloudFront: 'globe', SQS: 'queue', CloudWatch: 'chart' }[service] || getService(service)?.icon || 'cloud');
+const serviceClass = service => `svc-${getService(service)?.group || 'architecture'}`;
 const esc = value => String(value ?? '').replace(/[&<>"']/g, c => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c]));
 const attr = esc;
 const $ = (selector, root = document) => root.querySelector(selector);
@@ -190,7 +193,7 @@ function stat(label, value, symbol, note, unit = '') {
   return `<article class="stat"><div class="stat-label">${label}${icon(symbol)}</div><div class="stat-value">${value}${unit ? `<small>${unit}</small>` : ''}</div><p class="stat-note">${icon('leaf')}${note}</p></article>`;
 }
 function cardPreview(c) {
-  return `<article class="flash-preview svc-${attr(c.service)}"><div class="card-top"><span class="service-label">${icon(serviceIcon(c.service))}${esc(c.service)}</span><button class="favorite-button${c.favorite ? ' is-favorite' : ''}" data-action="favorite" data-id="${attr(c.id)}" aria-label="${c.favorite ? 'Bỏ' : 'Thêm'} đánh dấu yêu thích" aria-pressed="${c.favorite}">${icon('star')}</button></div><button class="card-question" data-action="detail" data-id="${attr(c.id)}">${esc(c.question)}</button><div class="tags">${c.tags.slice(0,3).map(t => `<span class="tag">${esc(t)}</span>`).join('')}</div><div class="card-footer"><span class="card-status"><span class="status-dot${c.repetitions >= 3 ? ' connected' : ''}"></span>${mastery(c)}${c.note ? ` · ${icon('note')}` : ''}</span><button data-action="edit" data-id="${attr(c.id)}">${icon('edit')} Chỉnh sửa</button></div></article>`;
+  return `<article class="flash-preview ${serviceClass(c.service)}"><div class="card-top"><span class="service-label">${icon(serviceIcon(c.service))}${esc(c.service)}</span><button class="favorite-button${c.favorite ? ' is-favorite' : ''}" data-action="favorite" data-id="${attr(c.id)}" aria-label="${c.favorite ? 'Bỏ' : 'Thêm'} đánh dấu yêu thích" aria-pressed="${c.favorite}">${icon('star')}</button></div><button class="card-question" data-action="detail" data-id="${attr(c.id)}">${esc(c.question)}</button><div class="tags">${c.tags.slice(0,3).map(t => `<span class="tag">${esc(t)}</span>`).join('')}</div><div class="card-footer"><span class="card-status"><span class="status-dot${c.repetitions >= 3 ? ' connected' : ''}"></span>${mastery(c)}${c.note ? ` · ${icon('note')}` : ''}</span><button data-action="edit" data-id="${attr(c.id)}">${icon('edit')} Chỉnh sửa</button></div></article>`;
 }
 function empty(symbol,title,description,action,label) {
   return `<div class="empty">${icon(symbol)}<h2>${title}</h2><p>${description}</p>${action ? `<button class="btn" data-action="${action}">${icon('plus')}${label}</button>` : ''}${!state.cards.length && state.session.mode === 'sheets' ? `<button class="btn btn-secondary" data-action="seed">Thêm 12 thẻ mẫu</button>` : ''}</div>`;
@@ -200,7 +203,7 @@ function filteredCards(notesOnly = false) {
   return state.cards.filter(c => (!notesOnly || c.note.trim()) && (state.service === 'all' || c.service === state.service) && (state.filter !== 'favorite' || c.favorite) && (state.filter !== 'due' || isDue(c)) && (!q || normalize([c.question,c.answer,c.note,c.service,...c.tags].join(' ')).includes(q))).sort((a,b) => Date.parse(b.updatedAt) - Date.parse(a.updatedAt));
 }
 function toolbar(notes = false) {
-  return `<div class="toolbar"><label class="search">${icon('search')}<input id="search-input" type="search" placeholder="${notes ? 'Tìm trong ghi chú…' : 'Tìm câu hỏi, dịch vụ, nhãn…'}" aria-label="${notes ? 'Tìm ghi chú' : 'Tìm flashcard'}" value="${attr(state.query)}" maxlength="200"><kbd>/</kbd></label><select id="service-filter" aria-label="Lọc theo dịch vụ"><option value="all">Tất cả dịch vụ</option>${SERVICES.map(s => `<option ${s === state.service ? 'selected' : ''}>${s}</option>`).join('')}</select>${!notes ? `<div class="view-switch" aria-label="Kiểu hiển thị"><button class="icon-button${state.view === 'grid' ? ' active' : ''}" data-action="view" data-view="grid" aria-label="Dạng lưới" aria-pressed="${state.view === 'grid'}">${icon('grid')}</button><button class="icon-button${state.view === 'list' ? ' active' : ''}" data-action="view" data-view="list" aria-label="Dạng danh sách" aria-pressed="${state.view === 'list'}">${icon('list')}</button></div>` : ''}</div>`;
+  return `<div class="toolbar"><label class="search">${icon('search')}<input id="search-input" type="search" placeholder="${notes ? 'Tìm trong ghi chú…' : 'Tìm câu hỏi, dịch vụ, nhãn…'}" aria-label="${notes ? 'Tìm ghi chú' : 'Tìm flashcard'}" value="${attr(state.query)}" maxlength="200"><kbd>/</kbd></label><select id="service-filter" aria-label="Lọc theo dịch vụ"><option value="all">Tất cả dịch vụ</option>${serviceOptions(state.service)}</select>${!notes ? `<div class="view-switch" aria-label="Kiểu hiển thị"><button class="icon-button${state.view === 'grid' ? ' active' : ''}" data-action="view" data-view="grid" aria-label="Dạng lưới" aria-pressed="${state.view === 'grid'}">${icon('grid')}</button><button class="icon-button${state.view === 'list' ? ' active' : ''}" data-action="view" data-view="list" aria-label="Dạng danh sách" aria-pressed="${state.view === 'list'}">${icon('list')}</button></div>` : ''}</div>`;
 }
 function libraryPage() {
   const cards = filteredCards();
@@ -208,11 +211,11 @@ function libraryPage() {
 }
 function notesPage() {
   const cards = filteredCards(true);
-  return `${intro('HIỂU THEO CÁCH CỦA BẠN','Ghi chú & điều dễ nhầm','Những dòng ghi lại hôm nay sẽ giúp bạn nhớ rõ hơn ngày mai.',false)}${toolbar(true)}${cards.length ? `<div class="notes-grid">${cards.map(c => `<article class="note-card svc-${attr(c.service)}"><span class="service-label">${icon(serviceIcon(c.service))}${esc(c.service)}</span><h3>${esc(c.question)}</h3><div class="note-body">${esc(c.note)}</div><footer><span>${esc(new Date(c.updatedAt).toLocaleDateString('vi-VN'))}</span><button class="text-link" data-action="note" data-id="${attr(c.id)}">${icon('edit')} Sửa ghi chú</button></footer></article>`).join('')}</div>` : empty('note','Để dành một điều đáng nhớ',state.query || state.service !== 'all' ? 'Chưa tìm thấy ghi chú phù hợp. Thử đổi bộ lọc.' : 'Mở một flashcard và thêm ghi chú. Bạn sẽ tìm thấy tất cả ghi chú ở đây.', 'navigate-library','Mở thư viện')}${notice()}`;
+  return `${intro('HIỂU THEO CÁCH CỦA BẠN','Ghi chú & điều dễ nhầm','Những dòng ghi lại hôm nay sẽ giúp bạn nhớ rõ hơn ngày mai.',false)}${toolbar(true)}${cards.length ? `<div class="notes-grid">${cards.map(c => `<article class="note-card ${serviceClass(c.service)}"><span class="service-label">${icon(serviceIcon(c.service))}${esc(c.service)}</span><h3>${esc(c.question)}</h3><div class="note-body">${esc(c.note)}</div><footer><span>${esc(new Date(c.updatedAt).toLocaleDateString('vi-VN'))}</span><button class="text-link" data-action="note" data-id="${attr(c.id)}">${icon('edit')} Sửa ghi chú</button></footer></article>`).join('')}</div>` : empty('note','Để dành một điều đáng nhớ',state.query || state.service !== 'all' ? 'Chưa tìm thấy ghi chú phù hợp. Thử đổi bộ lọc.' : 'Mở một flashcard và thêm ghi chú. Bạn sẽ tìm thấy tất cả ghi chú ở đây.', 'navigate-library','Mở thư viện')}${notice()}`;
 }
 function reviewPage() {
   if (state.study) return studyPage();
-  return `${intro('HỌC ĐỀU, NHỚ LÂU','Một chút ôn tập hôm nay','Không cần học thật nhiều. Chỉ cần quay lại đều đặn.',false)}<section class="study-intro"><div class="study-banner"><span class="service-icon">${icon('book')}</span><h2>Cho kiến thức thêm một lần gặp.</h2><p>Chọn một chế độ học. Lật thẻ, tự đánh giá và để lịch ôn lo phần còn lại.</p></div><div class="study-options"><button class="study-option" data-action="start-study" data-type="due">${icon('clock')}<strong>Ôn đến hạn</strong><span>${dueCards().length} thẻ cần ôn · Đề xuất cho bạn</span></button><button class="study-option" data-action="start-study" data-type="weak">${icon('bolt')}<strong>Củng cố điểm yếu</strong><span>Ưu tiên thẻ hay quên và mới học</span></button><button class="study-option" data-action="start-study" data-type="favorite">${icon('star')}<strong>Thẻ yêu thích</strong><span>${state.cards.filter(c => c.favorite).length} thẻ bạn đã đánh dấu</span></button></div><div class="study-controls"><select id="study-service" aria-label="Chọn chủ đề ôn"><option value="all">Tất cả chủ đề AWS</option>${SERVICES.map(s => `<option>${s}</option>`).join('')}</select><button class="btn btn-secondary" data-action="start-study" data-type="all">Luyện tập tự do ${icon('arrow')}</button></div><p class="keyboard-hint">Mẹo nhỏ: nhớ lại câu trả lời trước khi lật thẻ. Bạn sẽ học hiệu quả hơn.</p></section>${notice()}`;
+  return `${intro('HỌC ĐỀU, NHỚ LÂU','Một chút ôn tập hôm nay','Không cần học thật nhiều. Chỉ cần quay lại đều đặn.',false)}<section class="study-intro"><div class="study-banner"><span class="service-icon">${icon('book')}</span><h2>Cho kiến thức thêm một lần gặp.</h2><p>Chọn một chế độ học. Lật thẻ, tự đánh giá và để lịch ôn lo phần còn lại.</p></div><div class="study-options"><button class="study-option" data-action="start-study" data-type="due">${icon('clock')}<strong>Ôn đến hạn</strong><span>${dueCards().length} thẻ cần ôn · Đề xuất cho bạn</span></button><button class="study-option" data-action="start-study" data-type="weak">${icon('bolt')}<strong>Củng cố điểm yếu</strong><span>Ưu tiên thẻ hay quên và mới học</span></button><button class="study-option" data-action="start-study" data-type="favorite">${icon('star')}<strong>Thẻ yêu thích</strong><span>${state.cards.filter(c => c.favorite).length} thẻ bạn đã đánh dấu</span></button></div><div class="study-controls"><select id="study-service" aria-label="Chọn chủ đề ôn"><option value="all">Tất cả chủ đề AWS</option>${serviceOptions()}</select><button class="btn btn-secondary" data-action="start-study" data-type="all">Luyện tập tự do ${icon('arrow')}</button></div><p class="keyboard-hint">Mẹo nhỏ: nhớ lại câu trả lời trước khi lật thẻ. Bạn sẽ học hiệu quả hơn.</p></section>${notice()}`;
 }
 function studyPage() {
   const study = state.study;
@@ -223,7 +226,7 @@ function studyPage() {
   const c = state.cards.find(c => c.id === study.ids[study.index]);
   if (!c) { study.index++; return studyPage(); }
   const labels = { again:'Chưa nhớ', hard:'Khó', good:'Nhớ', easy:'Rất dễ' };
-  return `${intro('MỖI LẦN NHỚ LẠI, MỘT LẦN VỮNG HƠN','Góc tập trung','Dành trọn một chút thời gian cho thẻ trước mắt.',false)}<section class="study-shell"><div class="study-top"><button class="text-link" data-action="end-study">${icon('close')} Kết thúc phiên</button><span>Thẻ ${study.index + 1} / ${study.ids.length}</span></div><div class="study-progress"><span data-progress="${study.index/study.ids.length*100}"></span></div><div class="study-card${study.flipped ? ' flipped' : ''}" id="study-card"><div class="study-card-inner"><div class="study-face" ${study.flipped ? 'inert aria-hidden="true"' : ''}><div class="study-face-top"><span class="service-label svc-${attr(c.service)}">${icon(serviceIcon(c.service))}${esc(c.service)}</span><span>Câu hỏi</span></div><div class="study-question">${esc(c.question)}</div><div class="study-bottom-hint">Thử nhớ câu trả lời trước khi lật nhé.</div></div><div class="study-face study-back" ${!study.flipped ? 'inert aria-hidden="true"' : ''}><div class="study-face-top"><span class="service-label svc-${attr(c.service)}">${icon(serviceIcon(c.service))}${esc(c.service)}</span><span>Đáp án</span></div><div class="study-answer">${esc(c.answer)}</div>${c.explanation ? `<div class="explanation"><strong>Hiểu thêm một chút</strong>${esc(c.explanation)}</div>` : ''}${sourceLink(c.source)}</div></div></div><div class="study-actions" id="study-actions">${study.flipped ? Object.entries(labels).map(([rating,label],i) => `<button class="rating ${rating}" data-action="rate" data-rating="${rating}" ${state.busy ? 'disabled' : ''}>${label}<span>${i+1} · ${intervalLabel(schedule(c,rating).interval)}</span></button>`).join('') : `<button class="btn" data-action="flip">${icon('flip')} Lật xem đáp án <kbd>Space</kbd></button>`}</div><div class="study-tools"><button data-action="note" data-id="${attr(c.id)}">${icon('note')} ${c.note ? 'Sửa ghi chú' : 'Thêm ghi chú'}</button><button data-action="favorite" data-id="${attr(c.id)}" aria-pressed="${c.favorite}">${icon('star')} ${c.favorite ? 'Đã yêu thích' : 'Yêu thích'}</button><button data-action="edit" data-id="${attr(c.id)}">${icon('edit')} Sửa thẻ</button></div>${c.note ? `<div class="study-note"><strong>GHI CHÚ CỦA BẠN</strong>${esc(c.note)}</div>` : ''}<p class="keyboard-hint">${study.flipped ? '<kbd>1</kbd> Chưa nhớ &nbsp; <kbd>2</kbd> Khó &nbsp; <kbd>3</kbd> Nhớ &nbsp; <kbd>4</kbd> Rất dễ' : '<kbd>Space</kbd> để lật thẻ'} · Tiến độ được lưu sau mỗi thẻ.</p></section>`;
+  return `${intro('MỖI LẦN NHỚ LẠI, MỘT LẦN VỮNG HƠN','Góc tập trung','Dành trọn một chút thời gian cho thẻ trước mắt.',false)}<section class="study-shell"><div class="study-top"><button class="text-link" data-action="end-study">${icon('close')} Kết thúc phiên</button><span>Thẻ ${study.index + 1} / ${study.ids.length}</span></div><div class="study-progress"><span data-progress="${study.index/study.ids.length*100}"></span></div><div class="study-card${study.flipped ? ' flipped' : ''}" id="study-card"><div class="study-card-inner"><div class="study-face" ${study.flipped ? 'inert aria-hidden="true"' : ''}><div class="study-face-top"><span class="service-label ${serviceClass(c.service)}">${icon(serviceIcon(c.service))}${esc(c.service)}</span><span>Câu hỏi</span></div><div class="study-question">${esc(c.question)}</div><div class="study-bottom-hint">Thử nhớ câu trả lời trước khi lật nhé.</div></div><div class="study-face study-back" ${!study.flipped ? 'inert aria-hidden="true"' : ''}><div class="study-face-top"><span class="service-label ${serviceClass(c.service)}">${icon(serviceIcon(c.service))}${esc(c.service)}</span><span>Đáp án</span></div><div class="study-answer">${esc(c.answer)}</div>${c.explanation ? `<div class="explanation"><strong>Hiểu thêm một chút</strong>${esc(c.explanation)}</div>` : ''}${sourceLink(c.source)}</div></div></div><div class="study-actions" id="study-actions">${study.flipped ? Object.entries(labels).map(([rating,label],i) => `<button class="rating ${rating}" data-action="rate" data-rating="${rating}" ${state.busy ? 'disabled' : ''}>${label}<span>${i+1} · ${intervalLabel(schedule(c,rating).interval)}</span></button>`).join('') : `<button class="btn" data-action="flip">${icon('flip')} Lật xem đáp án <kbd>Space</kbd></button>`}</div><div class="study-tools"><button data-action="note" data-id="${attr(c.id)}">${icon('note')} ${c.note ? 'Sửa ghi chú' : 'Thêm ghi chú'}</button><button data-action="favorite" data-id="${attr(c.id)}" aria-pressed="${c.favorite}">${icon('star')} ${c.favorite ? 'Đã yêu thích' : 'Yêu thích'}</button><button data-action="edit" data-id="${attr(c.id)}">${icon('edit')} Sửa thẻ</button></div>${c.note ? `<div class="study-note"><strong>GHI CHÚ CỦA BẠN</strong>${esc(c.note)}</div>` : ''}<p class="keyboard-hint">${study.flipped ? '<kbd>1</kbd> Chưa nhớ &nbsp; <kbd>2</kbd> Khó &nbsp; <kbd>3</kbd> Nhớ &nbsp; <kbd>4</kbd> Rất dễ' : '<kbd>Space</kbd> để lật thẻ'} · Tiến độ được lưu sau mỗi thẻ.</p></section>`;
 }
 function intervalLabel(days) { return days === 0 ? '10 phút' : `${days} ngày`; }
 function sourceLink(source) {
@@ -292,13 +295,13 @@ function modalHeader(title,subtitle = '') {
 function detail(id) {
   const c = state.cards.find(c => c.id === id);
   if (!c) return;
-  openModal(`${modalHeader('Một thẻ, một kiến thức',mastery(c))}<div class="modal-body svc-${attr(c.service)}"><span class="service-label">${icon(serviceIcon(c.service))}${esc(c.service)}</span><h3 class="detail-question">${esc(c.question)}</h3><div class="tags">${c.tags.map(t => `<span class="tag">${esc(t)}</span>`).join('')}</div><p class="detail-label">Đáp án</p><div class="detail-answer">${esc(c.answer)}</div>${c.explanation ? `<p class="detail-label">Hiểu thêm một chút</p><div class="detail-answer">${esc(c.explanation)}</div>` : ''}${c.note ? `<div class="study-note"><strong>GHI CHÚ CỦA BẠN</strong>${esc(c.note)}</div>` : ''}${sourceLink(c.source)}</div><div class="modal-footer"><button class="btn btn-ghost" data-action="note" data-id="${attr(c.id)}">${icon('note')} Ghi chú</button><div class="right"><button class="btn btn-secondary" data-action="edit" data-id="${attr(c.id)}">${icon('edit')} Sửa thẻ</button><button class="btn" data-action="study-one" data-id="${attr(c.id)}">Ôn thẻ này ${icon('arrow')}</button></div></div>`);
+  openModal(`${modalHeader('Một thẻ, một kiến thức',mastery(c))}<div class="modal-body ${serviceClass(c.service)}"><span class="service-label">${icon(serviceIcon(c.service))}${esc(c.service)}</span><h3 class="detail-question">${esc(c.question)}</h3><div class="tags">${c.tags.map(t => `<span class="tag">${esc(t)}</span>`).join('')}</div><p class="detail-label">Đáp án</p><div class="detail-answer">${esc(c.answer)}</div>${c.explanation ? `<p class="detail-label">Hiểu thêm một chút</p><div class="detail-answer">${esc(c.explanation)}</div>` : ''}${c.note ? `<div class="study-note"><strong>GHI CHÚ CỦA BẠN</strong>${esc(c.note)}</div>` : ''}${sourceLink(c.source)}</div><div class="modal-footer"><button class="btn btn-ghost" data-action="note" data-id="${attr(c.id)}">${icon('note')} Ghi chú</button><div class="right"><button class="btn btn-secondary" data-action="edit" data-id="${attr(c.id)}">${icon('edit')} Sửa thẻ</button><button class="btn" data-action="study-one" data-id="${attr(c.id)}">Ôn thẻ này ${icon('arrow')}</button></div></div>`);
 }
 function editor(id) {
   const existing = state.cards.find(c => c.id === id);
-  const c = existing || {question:'',answer:'',explanation:'',service:'S3',tags:[],note:'',source:'',favorite:false};
+  const c = existing || {question:'',answer:'',explanation:'',service:'S3',tags:[...DEFAULT_TAGS],note:'',source:'',favorite:false};
   state.editor = { id:existing?.id || crypto.randomUUID(), updatedAt:existing?.updatedAt, existing:Boolean(existing), favorite:c.favorite };
-  openModal(`<form id="card-form">${modalHeader(existing ? 'Chỉnh sửa flashcard' : 'Góp nhặt một kiến thức mới','Một câu hỏi rõ ràng sẽ giúp bạn nhớ tốt hơn.')}<div class="modal-body"><label class="form-field"><span>Câu hỏi <small>Bắt buộc</small></span><textarea name="question" id="question-input" placeholder="Ví dụ: Khi nào nên dùng S3 Lifecycle?" required maxlength="1000" rows="2" autofocus>${esc(c.question)}</textarea></label><div id="duplicate-results" aria-live="polite"></div><label class="form-field"><span>Đáp án ngắn gọn <small>Bắt buộc</small></span><textarea name="answer" placeholder="Viết điều quan trọng nhất bạn cần nhớ…" required maxlength="10000" rows="3">${esc(c.answer)}</textarea></label><div class="form-row"><label class="form-field"><span>Dịch vụ AWS</span><select name="service">${SERVICES.map(s => `<option ${s === c.service ? 'selected' : ''}>${s}</option>`).join('')}</select></label><label class="form-field"><span>Nhãn <small>Ngăn cách bằng dấu phẩy</small></span><input name="tags" value="${attr(c.tags.join(', '))}" placeholder="storage, SAA, security" maxlength="320"></label></div><label class="form-field"><span>Giải thích thêm <small>Không bắt buộc</small></span><textarea name="explanation" placeholder="Ví dụ, ngữ cảnh sử dụng hoặc điểm cần phân biệt…" maxlength="10000" rows="2">${esc(c.explanation)}</textarea></label><label class="form-field"><span>Ghi chú của bạn <small>Điều dễ nhầm, mẹo ghi nhớ</small></span><textarea name="note" placeholder="Ghi theo cách bạn dễ hiểu nhất…" maxlength="10000" rows="2">${esc(c.note)}</textarea></label><label class="form-field"><span>Link tài liệu nguồn</span><input name="source" type="url" value="${attr(c.source)}" placeholder="https://docs.aws.amazon.com/…" maxlength="2048"></label><p id="card-error" class="form-error" role="alert"></p></div><div class="modal-footer">${existing ? `<button type="button" class="icon-button" data-action="delete-confirm" data-id="${attr(c.id)}" aria-label="Xóa flashcard">${icon('trash')}</button>` : `<span class="subtitle">${icon('shield')} Chỉ dành cho bạn</span>`}<div class="right"><button type="button" class="btn btn-secondary" data-action="close-modal">Hủy</button><button class="btn" type="submit">${icon('check')} ${existing ? 'Lưu thay đổi' : 'Lưu flashcard'}</button></div></div></form>`);
+  openModal(`<form id="card-form">${modalHeader(existing ? 'Chỉnh sửa flashcard' : 'Góp nhặt một kiến thức mới','Một câu hỏi rõ ràng sẽ giúp bạn nhớ tốt hơn.')}<div class="modal-body"><label class="form-field"><span>Câu hỏi <small>Bắt buộc</small></span><textarea name="question" id="question-input" placeholder="Ví dụ: Khi nào nên dùng S3 Lifecycle?" required maxlength="1000" rows="2" autofocus>${esc(c.question)}</textarea></label><div id="duplicate-results" aria-live="polite"></div><label class="form-field"><span>Đáp án ngắn gọn <small>Bắt buộc</small></span><textarea name="answer" placeholder="Viết điều quan trọng nhất bạn cần nhớ…" required maxlength="10000" rows="3">${esc(c.answer)}</textarea></label>${serviceField(c.service)}${tagsField(c.tags,c.service)}<label class="form-field"><span>Giải thích thêm <small>Không bắt buộc</small></span><textarea name="explanation" placeholder="Ví dụ, ngữ cảnh sử dụng hoặc điểm cần phân biệt…" maxlength="10000" rows="2">${esc(c.explanation)}</textarea></label><label class="form-field"><span>Ghi chú của bạn <small>Điều dễ nhầm, mẹo ghi nhớ</small></span><textarea name="note" placeholder="Ghi theo cách bạn dễ hiểu nhất…" maxlength="10000" rows="2">${esc(c.note)}</textarea></label><label class="form-field"><span>Link tài liệu nguồn</span><input name="source" type="url" value="${attr(c.source)}" placeholder="https://docs.aws.amazon.com/…" maxlength="2048"></label><p id="card-error" class="form-error" role="alert"></p></div><div class="modal-footer">${existing ? `<button type="button" class="icon-button" data-action="delete-confirm" data-id="${attr(c.id)}" aria-label="Xóa flashcard">${icon('trash')}</button>` : `<span class="subtitle">${icon('shield')} Chỉ dành cho bạn</span>`}<div class="right"><button type="button" class="btn btn-secondary" data-action="close-modal">Hủy</button><button class="btn" type="submit">${icon('check')} ${existing ? 'Lưu thay đổi' : 'Lưu flashcard'}</button></div></div></form>`);
   updateDuplicates();
 }
 function updateDuplicates() {
@@ -307,13 +310,75 @@ function updateDuplicates() {
   const matches = input.value.trim() ? duplicates(input.value,state.cards,state.editor.id).filter(m => m.score === 1 || input.value.trim().length > 8) : [];
   $('#duplicate-results').innerHTML = matches.length ? `<div class="duplicate-box"><strong>${icon('info')} Có thể bạn đã có thẻ tương tự</strong>${matches.map(({card,score}) => `<div class="duplicate-match"><span>${esc(card.question)} ${score === 1 ? '· Trùng câu hỏi' : ''}</span></div><details><summary>Xem đáp án hiện có</summary><p class="subtitle">${esc(card.answer)}</p></details>`).join('')}<label class="checkbox"><input type="checkbox" name="allowDuplicate"> Vẫn lưu thành một thẻ riêng</label></div>` : '';
 }
+function updateTagPicker() {
+  const input = $('#tags-input');
+  if (!input) return;
+  const tags = parseTagInput(input.value), expanded = $('#more-tags')?.open;
+  $('#tag-presets').innerHTML = tagChoices(tags,$('[name=service]', $('#card-form')).value);
+  $('#more-tags').open = Boolean(expanded);
+  $('#tag-count').textContent = `${tags.length}/${MAX_TAGS} nhãn`;
+  $('#tag-count').classList.toggle('over-limit',tags.length > MAX_TAGS);
+}
+function toggleServicePanel(force) {
+  const panel = $('#service-panel');
+  if (!panel) return;
+  const open = force ?? panel.hidden;
+  panel.hidden = !open;
+  $('#service-trigger').setAttribute('aria-expanded',String(open));
+  if (open) {
+    $('#service-search').value = '';
+    $('#service-results').innerHTML = serviceResults($('[name=service]', $('#card-form')).value);
+    $('#service-search').focus();
+  }
+}
+function selectService(service) {
+  const entry = getService(service);
+  if (!entry) return;
+  $('[name=service]', $('#card-form')).value = service;
+  $('#service-selected-label').textContent = service;
+  $('#service-selection-group').textContent = entry.groupLabel;
+  toggleServicePanel(false);
+  updateTagPicker();
+  $('#service-trigger').focus({preventScroll:true});
+}
+function selectTag(tag) {
+  try {
+    const input = $('#tags-input');
+    input.value = toggleTag(parseTagInput(input.value),tag).join(', ');
+    updateTagPicker();
+    const next = $$('[data-action=toggle-tag]', $('#tag-presets')).find(b => b.dataset.tag === tag && b.classList.contains('tag-choice') && !b.disabled);
+    (next || input).focus({preventScroll:true});
+  } catch (error) { toast(error.message,true); }
+}
+document.addEventListener('keydown',event => {
+  const panel = $('#service-panel');
+  if (!panel || panel.hidden || !event.target.closest('.service-picker')) return;
+  if (event.key === 'Escape') {
+    event.preventDefault(); toggleServicePanel(false); $('#service-trigger').focus(); return;
+  }
+  if (event.key === 'Enter' && event.target.id === 'service-search') {
+    event.preventDefault();
+    const first = $('.service-option.selected',panel) || $('.service-option',panel);
+    if (first) selectService(first.dataset.service);
+    return;
+  }
+  if (['Home','End'].includes(event.key) && event.target.id === 'service-search') return;
+  if (!['ArrowDown','ArrowUp','Home','End'].includes(event.key)) return;
+  const buttons = $$('.service-option',panel);
+  if (!buttons.length) return;
+  const index = buttons.indexOf(document.activeElement);
+  const next = event.key === 'Home' ? 0 : event.key === 'End' ? buttons.length - 1
+    : index < 0 ? event.key === 'ArrowUp' ? buttons.length - 1 : 0
+    : (index + (event.key === 'ArrowDown' ? 1 : -1) + buttons.length) % buttons.length;
+  event.preventDefault(); buttons[next].focus();
+});
 async function saveCard(event) {
   event.preventDefault();
   if (state.busy) return;
   const form = event.target, data = new FormData(form), info = state.editor;
   let card;
   try {
-    card = validateCard({ question:data.get('question'),answer:data.get('answer'),explanation:data.get('explanation'),service:data.get('service'),tags:String(data.get('tags')).split(',').map(s => s.trim()).filter(Boolean),note:data.get('note'),source:data.get('source'),favorite:info.favorite });
+    card = validateCard({ question:data.get('question'),answer:data.get('answer'),explanation:data.get('explanation'),service:data.get('service'),tags:parseTagInput(data.get('tags') || ''),note:data.get('note'),source:data.get('source'),favorite:info.favorite });
     const exact = state.cards.some(c => c.id !== info.id && normalize(c.question) === normalize(card.question));
     if (exact && !data.get('allowDuplicate')) throw new Error('Câu hỏi đã tồn tại. Chọn “Vẫn lưu thành một thẻ riêng” nếu bạn muốn tiếp tục.');
   } catch (error) { $('#card-error').textContent = error.message; return; }
@@ -407,6 +472,7 @@ async function importData(data) {
 }
 
 document.addEventListener('click',async event => {
+  if ($('#service-panel') && !$('#service-panel').hidden && !event.target.closest('.service-picker')) toggleServicePanel(false);
   const button = event.target.closest('[data-action]');
   if (!button || button.disabled) return;
   event.preventDefault();
@@ -415,6 +481,9 @@ document.addEventListener('click',async event => {
   if (action === 'navigate') navigate(tab);
   else if (action === 'navigate-library') navigate('library');
   else if (action === 'new') editor();
+  else if (action === 'service-picker') toggleServicePanel();
+  else if (action === 'select-service') selectService(button.dataset.service);
+  else if (action === 'toggle-tag') selectTag(button.dataset.tag);
   else if (action === 'edit') editor(id);
   else if (action === 'detail') detail(id);
   else if (action === 'note') noteModal(id);
@@ -467,6 +536,8 @@ document.addEventListener('click',async event => {
   else if (action === 'retry') await boot();
 });
 document.addEventListener('input',event => {
+  if (event.target.id === 'tags-input') updateTagPicker();
+  if (event.target.id === 'service-search') $('#service-results').innerHTML = serviceResults($('[name=service]', $('#card-form')).value,event.target.value);
   if (event.target.id === 'question-input') updateDuplicates();
   if (event.target.id === 'search-input') {
     const value = event.target.value, pos = event.target.selectionStart;

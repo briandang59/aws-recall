@@ -1,4 +1,5 @@
-export const SERVICES = ["IAM", "EC2", "S3", "VPC", "RDS", "Lambda", "DynamoDB", "CloudFront", "SQS", "CloudWatch"];
+import {SERVICES} from './catalog.js';
+export {SERVICES} from './catalog.js';
 export const DAY = 86400000;
 
 export function normalize(text) {
