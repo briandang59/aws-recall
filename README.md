@@ -194,6 +194,12 @@ api/auth/google/callback.mjs  → /api/auth/google/callback
 
 Với Container preset, `server.mjs` xử lý cả hai route. Với native Node.js Functions, hai file trên xử lý URL tương ứng. Không dùng rewrite tất cả request về `index.html`, vì như vậy API sẽ trả HTML thay vì JSON/redirect.
 
+### Nếu báo tên miền không khớp GOOGLE_OAUTH_REDIRECT_URI
+
+Trong Vercel → Settings → Environment Variables, đặt `GOOGLE_OAUTH_REDIRECT_URI` theo đúng domain đang mở, ví dụ `https://aws-recall-three.vercel.app/api/auth/google/callback`, cho môi trường Production. Không dùng giá trị localhost hoặc URL của một Preview deployment khác. Google Cloud → OAuth Client → Authorized redirect URIs cũng cần URL đó. Redeploy sau khi thay đổi biến môi trường.
+
+OAuth handler đọc `x-forwarded-host` khi chạy trên Vercel và chuẩn hóa chữ hoa / port mặc định. Nếu vẫn khác tên miền, lỗi trả về `details.requestHost`, `details.configuredRedirectUri` và `details.expectedRedirectUri` để bạn biết cần sửa giá trị nào; các trường này không chứa secret/token.
+
 ```sh
 npm test
 npm run build
@@ -202,7 +208,7 @@ docker compose config --quiet
 
 Tests gồm validation, phát hiện trùng, lịch ôn, session HMAC, chống request khác origin, OAuth state/PKCE, callback web, cookie mã hóa, cách ly token giữa request đồng thời, lưu token cục bộ, chuyển đổi hàng Sheets và CRUD/review qua Google API giả lập. `npm run build` kiểm tra cú pháp ES modules và sự hiện diện các file triển khai; ứng dụng static không cần bundler.
 
-Kiểm tra trên môi trường xây dựng hiện tại: 17 tests và kiểm tra cú pháp đạt, bao gồm các entry point OAuth của Vercel; trang chủ và `/api/session` trả HTTP 200; Compose hợp lệ. **Chưa chạy được kiểm tra bằng trình duyệt thực và Docker build/run do quyền hệ thống hạn chế. Chưa xác minh Google API thật và chưa đẩy bản sửa lên Vercel: còn cần redeploy các file route và người dùng cấp quyền OAuth.**
+Kiểm tra trên môi trường xây dựng hiện tại: 18 tests và kiểm tra cú pháp đạt, bao gồm entry point OAuth, proxy host và chẩn đoán callback sai tên miền; trang chủ và `/api/session` trả HTTP 200; Compose hợp lệ. **Chưa chạy được kiểm tra bằng trình duyệt thực và Docker build/run do quyền hệ thống hạn chế. Chưa xác minh Google API thật và chưa đẩy bản sửa lên Vercel: còn cần redeploy các file route và người dùng cấp quyền OAuth.**
 
 Ứng dụng dành cho **một người dùng cá nhân**. Có kiểm tra `updatedAt` trước khi ghi nhưng Google Sheets không cung cấp compare-and-swap cho mô hình này; không bảo đảm chống mọi tranh chấp khi nhiều tab/người ghi đồng thời. Hạn chế sửa trực tiếp/sắp xếp Sheets khi app đang ghi. Login có giới hạn thử mật khẩu trong bộ nhớ mỗi instance; nếu đưa lên Internet, có thể thêm rate limit ở Vercel Firewall.
 

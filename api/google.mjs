@@ -12,11 +12,22 @@ export default async function handler(req,res) {
     const path = new URL(req.url,'http://localhost').pathname;
     if (path === '/api/auth/google') {
       if (!authenticated(req)) throw new HttpError(401,'Đăng nhập app trước khi kết nối Google.');
-      const redirectUri = process.env.GOOGLE_OAUTH_REDIRECT_URI;
+      const redirectUri = (process.env.GOOGLE_OAUTH_REDIRECT_URI || '').trim();
       let redirect;
       try { redirect = new URL(redirectUri); } catch { throw new HttpError(503,'Thiếu GOOGLE_OAUTH_REDIRECT_URI. Điền URL /api/auth/google/callback của website vào môi trường và Google Cloud Console.'); }
       if ((redirect.protocol !== 'https:' && !(redirect.protocol === 'http:' && ['localhost','127.0.0.1'].includes(redirect.hostname))) || redirect.pathname !== '/api/auth/google/callback' || redirect.search || redirect.hash || redirect.username || redirect.password) throw new HttpError(503,'GOOGLE_OAUTH_REDIRECT_URI không hợp lệ.');
-      if (redirect.host !== req.headers.host) throw new HttpError(503,'Mở app bằng đúng tên miền đã khai báo trong GOOGLE_OAUTH_REDIRECT_URI để kết nối Google.');
+      // Vercel may proxy requests to an internal host. Only trust its forwarded
+      // host on Vercel; a standalone server must keep using its actual Host.
+      const forwarded = process.env.VERCEL ? req.headers['x-forwarded-host'] : undefined;
+      const rawHost = typeof forwarded === 'string' && forwarded.trim() ? forwarded.split(',')[0].trim() : req.headers.host;
+      let requestHost;
+      try {
+        if (typeof rawHost !== 'string' || !/^[a-zA-Z0-9.-]+(?::\d{1,5})?$/.test(rawHost)) throw new Error('Invalid host');
+        requestHost = new URL(`${redirect.protocol}//${rawHost}`).host;
+      } catch { throw new HttpError(400,'Không xác định được tên miền truy cập. Mở lại app bằng tên miền Vercel chính thức.'); }
+      if (redirect.host !== requestHost) throw new HttpError(503,
+        `App đang mở tại ${requestHost}, nhưng GOOGLE_OAUTH_REDIRECT_URI đang trỏ tới ${redirect.host}. Sửa biến môi trường theo đúng tên miền đang dùng rồi redeploy.`,
+        {requestHost,configuredRedirectUri:redirectUri,expectedRedirectUri:`${redirect.protocol}//${requestHost}/api/auth/google/callback`});
       const auth = authorizationRequest({clientId:process.env.GOOGLE_CLIENT_ID,redirectUri});
       res.setHeader('Set-Cookie',googleCookie(STATE_COOKIE,seal({state:auth.state,verifier:auth.verifier,redirectUri,expiresAt:Date.now() + 600000}),600,'Lax'));
       res.writeHead(302,{Location:auth.url}); return res.end();
