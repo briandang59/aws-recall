@@ -1,0 +1,15 @@
+{
+  "name": "aws-recall",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "engines": { "node": ">=22" },
+  "scripts": {
+    "dev": "node --env-file-if-exists=.env.local server.mjs",
+    "start": "node --env-file-if-exists=.env.local server.mjs",
+    "google:connect": "node --env-file-if-exists=.env.local scripts/google-connect.mjs",
+    "build": "node --experimental-vm-modules scripts/check.mjs",
+    "test": "node --experimental-test-isolation=none --test tests/*.test.mjs"
+  },
+  "dependencies": {}
+}

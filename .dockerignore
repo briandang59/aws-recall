@@ -1,0 +1,11 @@
+.git
+.env
+.env.*
+!.env.example
+node_modules
+.npm-cache
+artifacts
+test-results
+playwright-report
+.vercel
+*.log
