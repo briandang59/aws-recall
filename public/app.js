@@ -215,7 +215,7 @@ function notesPage() {
 }
 function reviewPage() {
   if (state.study) return studyPage();
-  return `${intro('HỌC ĐỀU, NHỚ LÂU','Một chút ôn tập hôm nay','Không cần học thật nhiều. Chỉ cần quay lại đều đặn.',false)}<section class="study-intro"><div class="study-banner"><span class="service-icon">${icon('book')}</span><h2>Cho kiến thức thêm một lần gặp.</h2><p>Chọn một chế độ học. Lật thẻ, tự đánh giá và để lịch ôn lo phần còn lại.</p></div><div class="study-options"><button class="study-option" data-action="start-study" data-type="due">${icon('clock')}<strong>Ôn đến hạn</strong><span>${dueCards().length} thẻ cần ôn · Đề xuất cho bạn</span></button><button class="study-option" data-action="start-study" data-type="weak">${icon('bolt')}<strong>Củng cố điểm yếu</strong><span>Ưu tiên thẻ hay quên và mới học</span></button><button class="study-option" data-action="start-study" data-type="favorite">${icon('star')}<strong>Thẻ yêu thích</strong><span>${state.cards.filter(c => c.favorite).length} thẻ bạn đã đánh dấu</span></button></div><div class="study-controls"><select id="study-service" aria-label="Chọn chủ đề ôn"><option value="all">Tất cả chủ đề AWS</option>${serviceOptions()}</select><button class="btn btn-secondary" data-action="start-study" data-type="all">Luyện tập tự do ${icon('arrow')}</button></div><p class="keyboard-hint">Mẹo nhỏ: nhớ lại câu trả lời trước khi lật thẻ. Bạn sẽ học hiệu quả hơn.</p></section>${notice()}`;
+  return `${intro('HỌC ĐỀU, NHỚ LÂU','Một chút ôn tập hôm nay','Không cần học thật nhiều. Chỉ cần quay lại đều đặn.',false)}<section class="study-intro"><div class="study-banner"><span class="service-icon">${icon('book')}</span><h2>Cho kiến thức thêm một lần gặp.</h2><p>Chọn một chế độ học. Lật thẻ, tự đánh giá và để lịch ôn lo phần còn lại.</p></div><div class="study-options"><button class="study-option" data-action="start-study" data-type="due">${icon('clock')}<strong>Ôn đến hạn</strong><span>${dueCards().length} thẻ cần ôn · Đề xuất cho bạn</span></button><button class="study-option" data-action="start-study" data-type="weak">${icon('bolt')}<strong>Củng cố điểm yếu</strong><span>Ưu tiên thẻ hay quên và mới học</span></button><button class="study-option" data-action="start-study" data-type="favorite">${icon('star')}<strong>Thẻ yêu thích</strong><span>${state.cards.filter(c => c.favorite).length} thẻ bạn đã đánh dấu</span></button></div><div class="study-controls"><select id="study-service" aria-label="Chọn chủ đề ôn"><option value="all">Tất cả chủ đề AWS</option>${serviceOptions()}</select><select id="study-limit" aria-label="Số thẻ mỗi phiên"><option value="10">10 thẻ / phiên</option><option value="20" selected>20 thẻ / phiên</option><option value="50">50 thẻ / phiên</option><option value="all">Toàn bộ thẻ phù hợp</option></select><button class="btn btn-secondary" data-action="start-study" data-type="all">Luyện tập tự do ${icon('arrow')}</button></div><p class="keyboard-hint">Mẹo nhỏ: nhớ lại câu trả lời trước khi lật thẻ. Bạn sẽ học hiệu quả hơn.</p></section>${notice()}`;
 }
 function studyPage() {
   const study = state.study;
@@ -245,7 +245,7 @@ function startStudy(type = 'due', service = 'all', limit = 20) {
   if (type === 'weak') cards = cards.sort((a,b) => a.repetitions - b.repetitions || Date.parse(a.dueAt) - Date.parse(b.dueAt));
   if (type === 'favorite') cards = cards.filter(c => c.favorite);
   if (!cards.length) { toast(type === 'due' ? 'Không có thẻ đến hạn trong chủ đề này. Thử luyện tập tự do nhé.' : 'Chưa có thẻ phù hợp với chế độ này.'); return; }
-  state.study = { ids:cards.slice(0,limit).map(c => c.id), index:0, flipped:false, reviewed:0, startedAt:Date.now(), requestId:null };
+  state.study = { ids:(limit === 'all' ? cards : cards.slice(0,limit)).map(c => c.id), index:0, flipped:false, reviewed:0, startedAt:Date.now(), requestId:null };
   state.tab = 'review'; renderShell(); window.scrollTo({top:0});
 }
 function flip() {
@@ -499,7 +499,7 @@ document.addEventListener('click',async event => {
   else if (action === 'clear-filters') { state.query = ''; state.filter = 'all'; state.service = 'all'; renderPage(); }
   else if (action === 'deck') { navigate('library'); state.service = button.dataset.service; renderPage(); }
   else if (action === 'quick-study') startStudy(dueCards().length ? 'due' : 'all','all',10);
-  else if (action === 'start-study') startStudy(button.dataset.type,$('#study-service')?.value || 'all');
+  else if (action === 'start-study') startStudy(button.dataset.type,$('#study-service')?.value || 'all',$('#study-limit')?.value || 20);
   else if (action === 'study-one') { closeModal(); state.study = { ids:[id],index:0,flipped:false,reviewed:0,startedAt:Date.now(),requestId:null }; navigate('review'); }
   else if (action === 'flip') flip();
   else if (action === 'rate') await rate(button.dataset.rating);
