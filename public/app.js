@@ -1,3 +1,4 @@
+import { shuffleCards, restoreStudy } from './shared/study.js';
 import { SERVICES, duplicates, normalize, schedule, isDue, mastery, localDate, createCard, validateCard, validateImport, DAY } from './shared/model.js';
 import { seedCards } from './shared/seed.js';
 import {DEFAULT_TAGS,MAX_TAGS,getService,parseTagInput,toggleTag} from './shared/catalog.js';
@@ -75,6 +76,22 @@ function toast(message, error = false) {
 function savePrefs() {
   try { localStorage.setItem(PREFS, JSON.stringify(state.prefs)); } catch { toast('Trình duyệt không lưu được tùy chọn.', true); }
 }
+function studyStorageKey() { return `aws-recall-study-v1-${state.session.mode}`; }
+function saveStudy() {
+  if (!state.session) return;
+  try {
+    if (state.study && state.study.index < state.study.ids.length) localStorage.setItem(studyStorageKey(), JSON.stringify(state.study));
+    else localStorage.removeItem(studyStorageKey());
+  } catch { toast('Kh\u00f4ng l\u01b0u \u0111\u01b0\u1ee3c phi\u00ean h\u1ecdc. H\u00e3y ki\u1ec3m tra b\u1ed9 nh\u1edb tr\u00ecnh duy\u1ec7t.', true); }
+}
+function resumeStudy() {
+  if (state.study) return;
+  try {
+    state.study = restoreStudy(JSON.parse(localStorage.getItem(studyStorageKey()) || 'null'), state.cards, state.reviews);
+    if (state.study) state.tab = 'review';
+    saveStudy();
+  } catch { state.study = null; }
+}
 function setTheme() {
   state.prefs.theme = document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark';
   document.documentElement.dataset.theme = state.prefs.theme;
@@ -107,6 +124,7 @@ async function loadData() {
     const result = readLocal();
     commitLocal(result.cards, result.reviews);
   }
+  resumeStudy();
 }
 async function boot() {
   try {
@@ -151,6 +169,7 @@ function notice() {
   return state.session.mode === 'demo' ? `<div class="demo-notice">${icon('info')} Bản thử đang lưu trên trình duyệt này.<button data-action="settings">Kết nối Google Sheets</button></div>` : `<div class="demo-notice">${icon('shield')} Dữ liệu riêng tư · Lưu trữ trên Google Sheets của bạn</div>`;
 }
 function renderPage() {
+  saveStudy();
   const page = $('#page');
   if (!page) return;
   page.innerHTML = state.tab === 'home' ? homePage() : state.tab === 'library' ? libraryPage() : state.tab === 'review' ? reviewPage() : notesPage();
@@ -244,6 +263,7 @@ function startStudy(type = 'due', service = 'all', limit = 20) {
   if (type === 'due') cards = cards.filter(c => isDue(c)).sort((a,b) => Date.parse(a.dueAt) - Date.parse(b.dueAt));
   if (type === 'weak') cards = cards.sort((a,b) => a.repetitions - b.repetitions || Date.parse(a.dueAt) - Date.parse(b.dueAt));
   if (type === 'favorite') cards = cards.filter(c => c.favorite);
+  if (type === 'all') cards = shuffleCards(cards);
   if (!cards.length) { toast(type === 'due' ? 'Không có thẻ đến hạn trong chủ đề này. Thử luyện tập tự do nhé.' : 'Chưa có thẻ phù hợp với chế độ này.'); return; }
   state.study = { ids:(limit === 'all' ? cards : cards.slice(0,limit)).map(c => c.id), index:0, flipped:false, reviewed:0, startedAt:Date.now(), requestId:null };
   state.tab = 'review'; renderShell(); window.scrollTo({top:0});
@@ -251,6 +271,7 @@ function startStudy(type = 'due', service = 'all', limit = 20) {
 function flip() {
   if (!state.study || state.study.flipped || state.study.index >= state.study.ids.length) return;
   state.study.flipped = true;
+  saveStudy();
   $('#study-card').classList.add('flipped');
   const faces = $$('.study-face');
   faces[0].setAttribute('inert',''); faces[0].setAttribute('aria-hidden','true');
@@ -266,6 +287,7 @@ async function rate(rating) {
   $$('.rating').forEach(b => b.disabled = true);
   const c = state.cards.find(c => c.id === s.ids[s.index]);
   s.requestId ||= crypto.randomUUID();
+  saveStudy();
   try {
     if (state.session.mode === 'sheets') {
       const result = await request('/api/cards',{ action:'review',id:c.id,expectedVersion:c.updatedAt,rating,reviewId:s.requestId });

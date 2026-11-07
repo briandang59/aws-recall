@@ -1,5 +1,9 @@
 # AWS Recall
 
+Phiên **Luyện tập tự do** tự động xáo trộn toàn bộ thẻ phù hợp trước khi chọn số thẻ mỗi phiên. Các chế độ đến hạn và điểm yếu vẫn giữ thứ tự ưu tiên.
+
+Phiên đang học tự lưu trên trình duyệt, gồm thứ tự thẻ, vị trí hiện tại và trạng thái lật. Mở lại ứng dụng trên cùng trình duyệt sẽ tiếp tục phiên sau khi đăng nhập và tải dữ liệu. Phiên kết thúc hoặc hoàn thành sẽ được xóa khỏi bộ nhớ phiên; lịch sử ôn vẫn được giữ. Phiên này không đồng bộ giữa thiết bị và được lưu riêng cho bản thử và Google Sheets.
+
 Không gian flashcard AWS cá nhân, giao diện tiếng Việt, nền xanh đen / sáng, nhấn cam ấm. Có animation lật thẻ, tìm kiếm, lọc dịch vụ, cảnh báo câu hỏi trùng, ghi chú, đánh dấu yêu thích, ôn theo lịch và sao lưu JSON.
 
 Ứng dụng dùng HTML/CSS/JavaScript và API Node.js 22, không cần cài thư viện để chạy. Docker là cách triển khai mặc định trên Vercel theo yêu cầu.
