@@ -5,7 +5,8 @@
  <meta name="theme-color" content="#f6f7fb">
  <meta name="description" content="Bản đồ dịch vụ AWS cho SAA-C03: định nghĩa tiếng Việt, cách hoạt động, sơ đồ kiến trúc tương tác và bảng so sánh.">
  <title>AWS Atlas · Bản đồ kiến thức SAA-C03</title>
- <link rel="icon" href="./favicon.svg" type="image/svg+xml"><link rel="stylesheet" href="./atlas.css">
+ <link rel="icon" href="./favicon.svg" type="image/svg+xml"><link rel="stylesheet" href="./atlas.css"><link rel="stylesheet" href="./atlas-enhancements.css">
+ <script src="./atlas-theme.js"></script>
  <script type="module" src="./atlas.js"></script>
 </head>
 <body>
@@ -14,11 +15,11 @@
   <a href="#overview" class="brand"><span class="brand-icon">a<span>↗</span></span><span>AWS <b>Atlas</b><small>LEARN THE CONNECTIONS</small></span></a>
   <div class="course"><span class="course-dot"></span><div>Solutions Architect<small>Associate · SAA-C03</small></div><span class="course-arrow">⌄</span></div>
   <p class="nav-label">KHÔNG GIAN KIẾN THỨC</p>
-  <nav id="navigation"><a href="#overview" data-tab="overview">◫ <span>Tổng quan</span></a><a href="#services" data-tab="services">▦ <span>Thư viện dịch vụ</span><small id="nav-count"></small></a><a href="#architectures" data-tab="architectures">⌘ <span>Mô hình kiến trúc</span></a><a href="#compare" data-tab="compare">⇄ <span>So sánh & lựa chọn</span></a><a href="#glossary" data-tab="glossary">▤ <span>Khái niệm nền tảng</span></a><a href="#saved" data-tab="saved">☆ <span>Đã lưu</span><small id="saved-count">0</small></a></nav>
+  <nav id="navigation"><a href="#overview" data-tab="overview">◫ <span>Tổng quan</span></a><a href="#services" data-tab="services">▦ <span>Thư viện dịch vụ</span><small id="nav-count"></small></a><a href="#map" data-tab="map">◎ <span>Bản đồ tổng thể</span></a><a href="#architectures" data-tab="architectures">⌘ <span>Mô hình kiến trúc</span></a><a href="#compare" data-tab="compare">⇄ <span>So sánh & lựa chọn</span></a><a href="#glossary" data-tab="glossary">▤ <span>Khái niệm nền tảng</span></a><a href="#saved" data-tab="saved">☆ <span>Đã lưu</span><small id="saved-count">0</small></a></nav>
   <p class="nav-label category-label">KHÁM PHÁ THEO NHÓM</p><nav class="category-nav" id="categories"></nav>
   <div class="sidebar-footer"><span class="footer-mark">✦</span><strong>Hiểu cách kết nối.<br>Nhớ lâu hơn.</strong><p>Học dịch vụ trong một kiến trúc,<br>không chỉ trong một danh sách.</p><a href="https://tutorialsdojo.com/aws-cheat-sheets/" target="_blank" rel="noopener noreferrer">Tham khảo Tutorials Dojo ↗</a></div>
  </aside>
- <div class="workspace"><header class="topbar"><button id="menu" class="icon-button" aria-label="Mở menu" aria-expanded="false">☰</button><div class="breadcrumb">Không gian học <span>/</span> <strong id="crumb">Tổng quan</strong></div><div class="top-right"><span class="live-dot"></span><span>Kiến thức có hệ thống</span><span class="avatar">SA</span></div></header>
+ <div class="workspace"><header class="topbar"><button id="menu" class="icon-button" aria-label="Mở menu" aria-expanded="false">☰</button><div class="breadcrumb">Không gian học <span>/</span> <strong id="crumb">Tổng quan</strong></div><div class="top-right"><button id="theme-toggle" class="icon-button" aria-label="Đổi giao diện sáng tối" aria-pressed="false">☾</button><span class="live-dot"></span><span>Kiến thức có hệ thống</span><span class="avatar">SA</span></div></header>
  <main id="main" tabindex="-1"></main>
  <footer class="page-footer"><span>AWS Atlas <b>·</b> Một bản đồ, nhiều kết nối.</span><a href="#sources">Nguồn & phạm vi nội dung ↗</a></footer></div>
  <div id="overlay" class="overlay" hidden></div>

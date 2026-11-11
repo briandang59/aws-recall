@@ -9,7 +9,7 @@ if (!app.includes('href="/atlas.html"')) {
 }
 const output = new URL('../sites/aws-atlas/dist/', import.meta.url);
 await mkdir(output, { recursive: true });
-for (const name of ['atlas.html', 'atlas.css', 'atlas.js', 'atlas-data.js', 'fonts.css', 'favicon.svg']) {
+for (const name of ['atlas.html', 'atlas.css', 'atlas.js', 'atlas-data.js', 'atlas-theme.js', 'atlas-map.js', 'atlas-map-data.js', 'atlas-enhancements.css', 'fonts.css', 'favicon.svg']) {
   await copyFile(new URL(`../public/${name}`, import.meta.url), new URL(name === 'atlas.html' ? 'index.html' : name, output));
 }
 console.log('Atlas static output synchronized: sites/aws-atlas/dist/');
